@@ -25,6 +25,8 @@ defmodule K8s.Client do
   alias K8s.Operation
   alias K8s.Client.Runner.{Async, Base, Stream, Wait, Watch}
 
+  @last_applied_configuration_annotation "ex.kubernetes.io/last-applied-configuration"
+
   @doc "alias of `K8s.Client.Runner.Base.run/2`"
   defdelegate run(operation, cluster_name), to: Base
 
@@ -179,6 +181,70 @@ defmodule K8s.Client do
 
   def list(api_version, kind, opts),
     do: Operation.build(:list, api_version, kind, opts)
+
+  @doc """
+  Like kubectl it applies the given resource to the cluster. Since the apply has to check whether the resource already
+  exists in the cluster, it requires the run() operation to be passed as a callback. Finally, this function applies the
+  resource to the cluster directly by calling the run callback.
+
+  ## Examples
+
+      iex>  deployment = %{
+      ...>    "apiVersion" => "apps/v1",
+      ...>    "kind" => "Deployment",
+      ...>    "metadata" => %{
+      ...>      "labels" => %{
+      ...>        "app" => "nginx"
+      ...>      },
+      ...>      "name" => "nginx",
+      ...>      "namespace" => "test"
+      ...>    },
+      ...>    "spec" => %{
+      ...>      "replicas" => 2,
+      ...>      "selector" => %{
+      ...>        "matchLabels" => %{
+      ...>          "app" => "nginx"
+      ...>        }
+      ...>      },
+      ...>      "template" => %{
+      ...>        "metadata" => %{
+      ...>          "labels" => %{
+      ...>            "app" => "nginx"
+      ...>          }
+      ...>        },
+      ...>        "spec" => %{
+      ...>          "containers" => %{
+      ...>            "image" => "nginx",
+      ...>            "name" => "nginx"
+      ...>          }
+      ...>        }
+      ...>      }
+      ...>    }
+      ...>  }
+      ...> K8s.Client.apply(deployment, &K8s.Client.run(&1, :default))
+
+  """
+  @spec apply(map(), function) :: Base.result_t()
+  def apply(resource, run_callback) do
+    case resource |> get() |> run_callback.() do
+      {:error, :not_found} ->
+        resource
+        |> add_last_applied_configuration()
+        |> create()
+        |> run_callback.()
+
+      {:ok, current_resource} ->
+        last_applied_configuration = get_last_applied_configuration(current_resource)
+        resource_configuration = get_last_applied_configuration(resource)
+
+        if last_applied_configuration != resource_configuration do
+          resource
+          |> add_last_applied_configuration()
+          |> patch()
+          |> run_callback.()
+        end
+    end
+  end
 
   @doc """
   Returns a `POST` `K8s.Operation` to create the given resource.
@@ -780,5 +846,21 @@ defmodule K8s.Client do
   @spec delete_all(binary(), binary() | atom(), namespace: binary()) :: Operation.t()
   def delete_all(api_version, kind, namespace: namespace) do
     Operation.build(:deletecollection, api_version, kind, namespace: namespace)
+  end
+
+  @spec add_last_applied_configuration(map) :: map
+  defp add_last_applied_configuration(resource) do
+    update_in(resource, ~w(metadata annotations), fn annotations ->
+      (annotations || %{})
+      |> Map.put(
+        @last_applied_configuration_annotation,
+        Jason.encode!(resource)
+      )
+    end)
+  end
+
+  @spec get_last_applied_configuration(map) :: binary
+  defp get_last_applied_configuration(resource) do
+    get_in(resource, ["metadata", "annotations", @last_applied_configuration_annotation])
   end
 end

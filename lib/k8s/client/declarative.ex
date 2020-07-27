@@ -10,7 +10,7 @@ defmodule K8s.Client.Declarative do
   @last_applied_configuration_annotation "ex.kubernetes.io/last-applied-configuration"
 
   @doc """
-  Like kubectl it applies the given resource to the cluster. Since the apply has to check whether the resource already
+  Inspired by `kubectl apply`, updates a given resource on the cluster, while recording the previous state in the annotation `(#{@last_applied_configuration_annotation})`. Since the apply has to check whether the resource already
   exists in the cluster, it requires the run() operation to be passed as a callback. Finally, this function applies the
   resource to the cluster directly by calling the run callback.
 

@@ -1,6 +1,6 @@
 defmodule K8s.Client do
   @moduledoc """
-  An experimental k8s client.
+  Kubernetes API Client.
 
   Functions return `K8s.Operation`s that represent kubernetes operations.
 
@@ -26,37 +26,37 @@ defmodule K8s.Client do
   alias K8s.Client.Runner.{Async, Base, Stream, Wait, Watch}
 
   @doc "alias of `K8s.Client.Runner.Base.run/2`"
-  defdelegate run(operation, cluster_name), to: Base
+  defdelegate run(operation, conn), to: Base
 
   @doc "alias of `K8s.Client.Runner.Base.run/3`"
-  defdelegate run(operation, cluster_name, opts), to: Base
+  defdelegate run(operation, conn, opts), to: Base
 
   @doc "alias of `K8s.Client.Runner.Base.run/4`"
-  defdelegate run(operation, cluster_name, resource, opts), to: Base
+  defdelegate run(operation, conn, resource, opts), to: Base
 
   @doc "alias of `K8s.Client.Runner.Async.run/3`"
-  defdelegate async(operations, cluster_name), to: Async, as: :run
+  defdelegate async(operations, conn), to: Async, as: :run
 
   @doc "alias of `K8s.Client.Runner.Async.run/3`"
-  defdelegate parallel(operations, cluster_name, opts), to: Async, as: :run
+  defdelegate parallel(operations, conn, opts), to: Async, as: :run
 
   @doc "alias of `K8s.Client.Runner.Async.run/3`"
-  defdelegate async(operations, cluster_name, opts), to: Async, as: :run
+  defdelegate async(operations, conn, opts), to: Async, as: :run
 
   @doc "alias of `K8s.Client.Runner.Wait.run/3`"
-  defdelegate wait_until(operation, cluster_name, opts), to: Wait, as: :run
+  defdelegate wait_until(operation, conn, opts), to: Wait, as: :run
 
   @doc "alias of `K8s.Client.Runner.Watch.run/3`"
-  defdelegate watch(operation, cluster_name, opts), to: Watch, as: :run
+  defdelegate watch(operation, conn, opts), to: Watch, as: :run
 
   @doc "alias of `K8s.Client.Runner.Watch.run/4`"
-  defdelegate watch(operation, cluster_name, rv, opts), to: Watch, as: :run
+  defdelegate watch(operation, conn, rv, opts), to: Watch, as: :run
 
   @doc "alias of `K8s.Client.Runner.Stream.run/2`"
-  defdelegate stream(operation, cluster_name), to: Stream, as: :run
+  defdelegate stream(operation, conn), to: Stream, as: :run
 
   @doc "alias of `K8s.Client.Runner.Stream.run/3`"
-  defdelegate stream(operation, cluster_name, opts), to: Stream, as: :run
+  defdelegate stream(operation, conn, opts), to: Stream, as: :run
 
   @doc "alias of `K8s.Client.Imperative.get/1`"
   defdelegate get(resource), to: Imperative
@@ -112,6 +112,6 @@ defmodule K8s.Client do
   @doc "alias of `K8s.Client.Imperative.delete_all/3`"
   defdelegate delete_all(api_version, kind, opts), to: Imperative
 
-  @doc "alias of `K8s.Client.Declarative.patch/1`"
-  defdelegate apply(resource), to: Declarative
+  @doc "alias of `K8s.Client.Declarative.apply/2`"
+  defdelegate apply(resource, conn), to: Declarative
 end

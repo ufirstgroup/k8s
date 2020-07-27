@@ -5,10 +5,9 @@ defmodule K8s.Application do
   use Application
 
   def start(_type, _args) do
-    :ets.new(K8s.Conn, [:set, :public, :named_table])
-    :ets.new(K8s.Cluster.Group, [:set, :public, :named_table])
-
-    children = [{K8s.Cluster.Registry, []}]
+    children = [
+      {K8s.Middleware.Registry, []}
+    ]
 
     opts = [strategy: :one_for_one, name: K8s.Supervisor]
     Supervisor.start_link(children, opts)

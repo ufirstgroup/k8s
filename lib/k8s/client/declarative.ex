@@ -5,6 +5,7 @@ defmodule K8s.Client.Declarative do
 
   alias K8s.Client.Imperative
   alias K8s.Client.Runner.Base
+  alias K8s.Conn
 
   @last_applied_configuration_annotation "ex.kubernetes.io/last-applied-configuration"
 
@@ -50,14 +51,14 @@ defmodule K8s.Client.Declarative do
       ...> K8s.Client.apply(deployment, &K8s.Client.run(&1, :default))
 
   """
-  @spec apply(map()) :: Base.result_t()
-  def apply(resource) do
-    case resource |> Imperative.get() |> Base.run() do
+  @spec apply(map(), Conn.t()) :: Base.result_t()
+  def apply(resource, %Conn{} = conn) do
+    case resource |> Imperative.get() |> Base.run(conn) do
       {:error, :not_found} ->
         resource
         |> add_last_applied_configuration()
         |> Imperative.create()
-        |> Base.run()
+        |> Base.run(conn)
 
       {:ok, current_resource} ->
         last_applied_configuration = get_last_applied_configuration(current_resource)
@@ -67,7 +68,7 @@ defmodule K8s.Client.Declarative do
           resource
           |> add_last_applied_configuration()
           |> Imperative.patch()
-          |> Base.run()
+          |> Base.run(conn)
         end
     end
   end

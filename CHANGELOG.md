@@ -5,11 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
 ## Unreleased
 
 ### Added
-
+- K8s.Operation struct `query_params` field
+- BasicAuth auth provider
+- Deprecated HTTPoison options being passed to K8s.Client.Runner.base
+- K8s.Operation.put_query_param/3 to add query parameters by key 
+- K8s.Operation.get_query_param/3 to get a query parameter by key
+- DigitalOcean authentication
+- `K8s.Resource.NamedList.access/1` - Accessor for lists with named items (containers, env, ...) ([#82](https://github.com/coryodaniel/k8s/pull/82))
 - `K8s.Client.apply/2` - A kubectl style apply function ([#81](https://github.com/coryodaniel/k8s/pull/81))
+
+### Changed
+- Refactored old references to `cluster_name` to `conn`
+
+## [0.5.0] - 2020-02-12
+
+### Added
+- #42 Request middleware support
+- #43 Just in time discovery: K8s.Discovery
+- #44 Support for ad-hoc connections. K8s.Conn based functions. Build your own Conn at runtime or config mix/env vars. No more Cluster registry.
+- K8s.Resource.from_file/2 and K8s.Resource.all_from_file/2 - non-exception versions
+
+### Removed
+- Boot time discovery K8s.Cluster.Discovery
+- K8s.Cluster.base_url/1
+- Remove K8s.Cluster*
 
 ## [0.4.0] - 2019-08-29
 

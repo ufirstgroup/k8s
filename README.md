@@ -1,6 +1,6 @@
 # K8s
 
-[K8s](https://hexdocs.pm/k8s/readme.html) - Kubernetes API Client for Elixir
+[K8s](https://hexdocs.pm/k8s/usage.html) - Kubernetes API Client for Elixir
 
 [![Build Status](https://travis-ci.org/coryodaniel/k8s.svg?branch=master)](https://travis-ci.org/coryodaniel/k8s)
 [![Coverage Status](https://coveralls.io/repos/github/coryodaniel/k8s/badge.svg?branch=master)](https://coveralls.io/github/coryodaniel/k8s?branch=master)
@@ -8,25 +8,26 @@
 [![Documentation](https://img.shields.io/badge/documentation-on%20hexdocs-green.svg)](https://hexdocs.pm/k8s/)
 ![Hex.pm](https://img.shields.io/hexpm/l/k8s.svg?style=flat)
 
+
 ## Features
 
-* A client API for humans
-* Kubernetes resources, groups, and CRDs are autodiscovered at boot time. No swagger file to include or override.
-* Client supports standard HTTP calls, async batches, wait on status, and watchers
-* Supports multiple clusters
-* Supports multiple authentication credentials
-  * serviceaccount
+* A client API for humans 👩🏼🧑👩🏻👩🏽👩🏾🧑🏻🧑🏽🧑🧑🏾👨🏼👨🏾👨🏿
+* 🔮 Kubernetes resources, groups, and CRDs are autodiscovered at boot time. No swagger file to include or override.
+* Client supports standard HTTP calls, async batches, wait on status ⏲️, and watchers 👀
+* ⚙️ HTTP Request middleware
+* Multiple clusters ⚓ ⚓ ⚓
+* 🔐 Multiple authentication credentials
+  * 🤖 serviceaccount
   * token
-  * certificate
+  * 📜 certificate
   * auth-provider
-* Supports multiple kubernetes API
-* Tested against kubernetes swagger specs: 1.10+ and master
-* CRD support
-* Kubernetes resource and version helper functions
-* Kube config file parsing
-* Certificate and service account based auth
-* Pluggable auth providers
-* Macro free; fast compile & fast startup
+  * Pluggable auth providers!
+* 🆗 Tested against Kubernetes versions 1.10+ and master
+* 🛠️ CRD support
+* 📈 Integrated with `:telemetry`
+* ℹ️ Kubernetes resource and version helper functions
+* 🧰 Kube config file parsing
+* 🏎️ Macro free; fast compile & fast startup
 
 ## Installation
 
@@ -35,7 +36,7 @@ The package can be installed by adding `k8s` to your list of dependencies in `mi
 ```elixir
 def deps do
   [
-    {:k8s, "~> 0.2"}
+    {:k8s, "~> 0.5"}
   ]
 end
 ```
@@ -47,177 +48,71 @@ Check out the [Usage Guide](https://hexdocs.pm/k8s/usage.html) for in-depth exam
 Most functions are also written using doctests.
 
 * [K8s.Client doctests](https://hexdocs.pm/k8s/K8s.Client.html)
-* [K8s.Cluster doctests](https://hexdocs.pm/k8s/K8s.Cluster.html)
 * [K8s.Conn doctests](https://hexdocs.pm/k8s/K8s.Conn.html)
 * [K8s.Resource doctests](https://hexdocs.pm/k8s/K8s.Resource.html)
 * [K8s.Version doctests](https://hexdocs.pm/k8s/K8s.Version.html)
 
-## Testing `K8s` operations in your application
+If you are interested in building Kubernetes Operators or Schedulers, check out [Bonny](https://github.com/coryodaniel/bonny).
 
-`K8s` ships with a [`K8s.Client.DynamicHTTPProvider`](./lib/k8s/client/dynamic_http_provider.ex) for stubbing HTTP responses to kubernetes API requests.
+### tl;dr Examples
 
-This provider is used throughout the test suite for mocking HTTP responses.
+
+#### Configure a cluster
+
+There are many ways to configure cluster connections. Check out the [guide](https://hexdocs.pm/k8s/connections.html) for additional options.
+
+In `config.exs`:
 
 ```elixir
-defmodule MyApp.ResourceTest do
-  use ExUnit.Case, async: true
-
-  defmodule K8sMock do
-    @base_url "https://localhost:6443"
-    @namespaces_url @base_url <> "/api/v1/namespaces"
-
-    def request(:get, @namespaces_url, _, _, _) do
-      namespaces = [%{"metadata" => %{"name" => "default"}}]
-      body = Jason.encode!(namespaces)
-      {:ok, %HTTPoison.Response{status_code: 200, body: body}}
-    end
-  end
-
-  setup do
-    DynamicHTTPProvider.register(self(), __MODULE__.K8sMock)
-  end
-
-  test "gets namespaces" do
-    operation = K8s.Client.get("v1", :namespaces)
-    assert {:ok, namespaces} = K8s.Client.run(operation, :default)
-    assert namespaces == [%{"metadata" => %{"name" => "default"}}]
-  end
-end
+config :k8s,
+  clusters: %{
+    prod_us_east1: %{ # <- this can be any name, used to load connections later
+      # Path to kube config
+      conn: "~/.kube/config",
+      # By default current context will be used, you can change the user or cluster
+      conn_opts: [user: "some-user", cluster: "prod-cluster"]
+    }
+  }
 ```
 
-To see advanced examples of usage, check out these examples in the test suite:
 
-* [client/runner/base](./test/k8s/client/runner/base_test.exs)
-* [client/runner/stream](./test/k8s/client/runner/stream_test.exs)
-* [client/runner/watch](./test/k8s/client/runner/watch_test.exs)
-* [discovery](./test/k8s/discovery_test.exs)
+#### Creating a deployment
 
-## Contributing
+```elixir
+{:ok, conn} = K8s.Conn.lookup(:prod_us_east1)
 
-### Adding support for a new version of kubernetes
+opts = [namespace: "default", name: "nginx", image: "nginx:nginx:1.7.9"]
+{:ok, resource} = K8s.Resource.from_file("priv/deployment.yaml", opts)
 
-Download the swagger spec for the new version. `k8s` doesn't use swagger to define the API, but it is used to drive property tests.
-
-```shell
-export NEW_VERSION_NUMBER=1.1n
-make get/${NEW_VERSION_NUMBER}
+operation = K8s.Client.create(resource)
+{:ok, deployment} = K8s.Client.run(operation, conn)
 ```
 
-```shell
-make test/${NEW_VERSION_NUMBER}
+#### Listing deployments
+
+In a namespace:
+
+```elixir
+{:ok, conn} = K8s.Conn.lookup(:prod_us_east1)
+
+operation = K8s.Client.list("apps/v1", "Deployment", namespace: "prod")
+{:ok, deployments} = K8s.Client.run(operation, conn)
 ```
 
-Mock discovery [responses](.test/support/discovery) exist to simulate runtime API discovery using the [`FileDriver`](./lib/k8s/cluster/discover/file_driver.ex)
+Across all namespaces:
 
-If new resources or APIs were added to kubernetes in the new version you will likely see one of these errors: `unsupported_api_version` and `unsupported_resource`.
+```elixir
+{:ok, conn} = K8s.Conn.lookup(:prod_us_east1)
 
-### Unsupported API Version errors
-
-This error occurs when a new API is added to kubernetes.
-
-Example: `{:error, :unsupported_api_version, "scheduling.k8s.io/v1"}`
-
-Add the `:unsupported_api_version` to [this](test/support/discovery/resource_definitions.json) mock configuration and rerun the test suite.
-
-A config entry looks like:
-
-```javascript
-// ...
- {
-    "groupVersion": "scheduling.k8s.io/v1", // add the api version
-    "kind": "APIResourceList", // leave as is
-    "resources": [ // add a list of resources provided by the new `groupVersion`
-      {
-        "kind": "PriorityClass", // `kind` name
-        "name": "priorityclasses", // plural name
-        "namespaced": false, // namespaced or not
-        "singularName": "",
-        "verbs": [ // list of verbs supported by the new API
-          "create",
-          "delete",
-          "deletecollection",
-          "get",
-          "list",
-          "patch",
-          "update",
-          "watch"
-        ]
-      }
-    ]
-  },
-// ...
+operation = K8s.Client.list("apps/v1", "Deployment", namespace: :all)
+{:ok, deployments} = K8s.Client.run(operation, conn)
 ```
 
-### Unsupported Resource errors
+#### Getting a deployment
 
-This error occurs when a new resource type is added to an existing API, similar to above you will need to add the `resource` to the list of `resources`.
+```elixir
+{:ok, conn} = K8s.Conn.lookup(:prod_us_east1)
 
-The following config is missing `runtimeclasses` as a resource.
-
-```javascript
-  {
-    "groupVersion": "node.k8s.io/v1beta1",
-    "kind": "APIResourceList",
-    "resources": [
-      {
-        "kind": "Node",
-        "name": "nodes",
-        "namespaced": false,
-        "singularName": "",
-        "verbs": [
-          "create",
-          "delete",
-          "deletecollection",
-          "get",
-          "list",
-          "patch",
-          "update",
-          "watch"
-        ]
-      }
-    ]
-  },
-```
-
-After mocking:
-
-```javascript
-  {
-    "groupVersion": "node.k8s.io/v1beta1",
-    "kind": "APIResourceList",
-    "resources": [
-      {
-        "kind": "Node",
-        "name": "nodes",
-        "namespaced": false,
-        "singularName": "",
-        "verbs": [
-          "create",
-          "delete",
-          "deletecollection",
-          "get",
-          "list",
-          "patch",
-          "update",
-          "watch"
-        ]
-      },
-      {
-        "kind": "RuntimeClass",
-        "name": "runtimeclasses",
-        "namespaced": false,
-        "singularName": "",
-        "verbs": [
-          "create",
-          "delete",
-          "deletecollection",
-          "get",
-          "list",
-          "patch",
-          "update",
-          "watch"
-        ]
-      }
-    ]
-  },
+operation = K8s.Client.get("apps/v1", :deployment, [namespace: "default", name: "nginx-deployment"])
+{:ok, deployment} = K8s.Client.run(operation, conn)
 ```

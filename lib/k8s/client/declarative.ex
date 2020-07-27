@@ -75,12 +75,7 @@ defmodule K8s.Client.Declarative do
 
   @spec add_last_applied_configuration(map) :: map
   defp add_last_applied_configuration(resource) do
-    update_in(resource, ~w(metadata annotations), fn annotations ->
-      (annotations || %{})
-      |> Map.put(
-           @last_applied_configuration_annotation,
-           Jason.encode!(resource)
-         )
+    put_in(resource, ["metadata", Access.key("annotations", %{}), @last_applied_configuration_annotation]), Jason.encode!(resource))
     end)
   end
 
